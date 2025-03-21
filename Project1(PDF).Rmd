@@ -1,0 +1,406 @@
+---
+title: "Project1"
+author: "Annicha Jeerasawat"
+date: "2024-04-12"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+***What is stroke?*** 
+A stroke, sometimes called a brain attack, occurs when something blocks blood supply to part of the brain or when a blood vessel in the brain bursts. In either case, parts of the brain become damaged or die. A stroke can cause lasting brain damage, long-term disability, or even death. (“About Stroke | cdc.gov”)
+
+ ***Examples of Stroke Effects to our body*** 
+Physical - difficulty with gripping or holding things.
+Emotional and Personality - feel worried most of the time.
+Communication - difficulty in finding the right words or understanding what others are saying (aphasia or dysphasia).
+(Department of Health & Human Services)
+
+***Effect of Stroke to Worldwide***
+Stroke is the leading cause of disability worldwide and the second leading cause of death. The Global Stroke Factsheet released in 2022 reveals that lifetime risk of developing a stroke has increased by 50% over the last 17 years and now 1 in 4 people is estimated to have a stroke in their lifetime. (World Health Organization: WHO)
+
+## About this dataset
+<div style="font-size: 18px;">
+- id: unique identifier 
+- gender: "Male", "Female" or "Other" 
+- age: age of the patient 
+- hypertension: 0 if the patient doesn't have hypertension, 1 if the patient has hypertension 
+- heart_disease: 0 if the patient doesn't have any heart diseases, 1 if the patient has a heart disease 
+- ever_married: "No" or "Yes" 
+- work_type: "children", "Govt_jov", "Never_worked", "Private" or "Self-employed" 
+- Residence_type: "Rural" or "Urban" 
+- avg_glucose_level: average glucose level in blood 
+- bmi: body mass index 
+- smoking_status: "formerly smoked", "never smoked", "smokes" or "Unknown"* 
+- stroke: 1 if the patient had a stroke or 0 if not 
+
+Note: "Unknown" in smoking_status means that the information is unavailable for this patient
+
+## Purpose of this project
+
+The main goal of this project is to find the possible factors that could lead to a stroke.
+
+## Getting Started
+
+#### Import Data from Excel file
+
+```{r}
+data <- read.csv("C:\\Users\\ASUS\\OneDrive\\Desktop\\ASU Online\\DAT301\\healthcare-dataset-stroke-data.csv")
+```
+
+Look at the structure of Stroke Prediction dataset, so there are 5110 observations/row and 12 variables/columns.
+
+```{r}
+str(data)
+```
+
+#### See what are the column names in dataset.
+
+```{r}
+colnames(data)
+```
+
+####Get the top rows in the dataset.
+
+```{r}
+head(data)
+```
+
+#### Summarize the dataset
+
+Using summary(), we will know which type of data is in each column. If the column contains numerical data, we will get the statistical information from all the collected cells within a specific column. However, if we get categorical data, the information will show 'character'.
+
+Note: Some columns contain only values 0 and 1, which we will count as categorical data (ordinal encoding data). We can easily notice from the provided information that the minimum value equals 0 and the maximum value equals 1.
+
+
+```{r}
+summary(data)
+```
+
+#### Data Cleaning - handling with missing values
+<div style="font-size: 20px;">
+Since I noticed that the BMI column contains "N/A" values when I observed the structure of the stroke dataset, they were formed as string values, and I decided to convert them to NA (missing values). Then, I replace all missing values by the mean of non-missing BMI values.
+
+```{r}
+data$bmi[data$bmi == "N/A"] <- NA
+data$bmi <- as.numeric(data$bmi)
+
+mean_bmi =  mean(data$bmi, na.rm = TRUE)
+data$bmi[is.na(data$bmi)] <- mean_bmi
+
+```
+
+## Data Manipulation
+
+Firstly, I create the new dataframe which contains only gender and stroke columns and filter them by determined stroke equals 1 which means that find the male and female who have stroke.
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+gender_and_stroke <- data %>%
+              select(gender, stroke) %>%
+              filter(stroke == 1)
+```
+
+## Exploratory Data Analysis (EDA) & Data Visualization
+
+## 1. Which gender has more chance to get stroke?
+
+We can infer from the bar plot that women are more likely than men to have a stroke. The figure indicates that 108 men and 141 women suffer from strokes, correspondingly. The technique I use here is create the bar plot using ggplot2 for making the beautiful bar plot.The figure primarily displays the overall number of stroke patients broken down by gender.
+
+```{r}
+library(ggplot2)
+
+gender = data$gender
+gender_counted = count(gender_and_stroke, gender)
+
+plot1 <- ggplot(gender_counted, aes(x= gender, y= n, fill=gender)) +
+  labs(x = "Gender", y = "Total", fill = "Gender", title = "Male vs. Female") +
+  geom_text(aes(label=n), vjust=-0.25)+
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Female" = "#DC6B19", "Male" = "#90D26D")) +
+  theme(axis.text.x = element_text(face = "bold", color = "black", size = 12, hjust = 0.8),
+        plot.title = element_text(face= "bold", size = 18, hjust = 0.5))
+
+plot1
+```
+
+## 2. Which lifestyles have affect to get stroke?
+### 2.1 Does married status affect to stroke?
+
+In order to respond to this question, I choose to use ggplot2 to produce a bar plot that compares two groups: those who have never married and those who have married. To choose only the ever_married and stroke columns, I established a new variable called married_status. I then compile all of their numbers and plot them.
+
+Given that married people are more likely than single people to have had strokes overall and to have never had one, we can assume that marital status has no effect on the likelihood of having a stroke. This graph illustrates that there is always a probability of having a stroke, even if you are single. Other risk factors must also be taken into account. 
+
+```{r}
+# Filter the data based on stroke status and count occurrences for each category
+married_status <- data %>%
+  group_by(ever_married, stroke)
+
+married_status_count <- count(married_status)
+
+# Create the plot
+plot2 <- ggplot(married_status_count, aes(x = ever_married, y = n, fill = factor(stroke))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Married Status", y = "Total", fill = "Stroke", title = "Married vs. Never Married by Stroke Status") +
+  geom_text(aes(label = n), position = position_dodge(width = 0.9), vjust = -0.5, size = 3, color = "black") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(face = "bold", color = "black", size = 12, hjust = 0.5),
+        plot.title = element_text(face = "bold", size = 18, hjust = 0.5))
+
+plot2
+```
+
+### 2.2 How work types affect to people from urban and rural to get stroke?
+
+In this question, I group the data and separate it into two groups: stroke patients who lived in urban areas and those who lived in rural areas. Then, I again use ggplot2 to make pie charts and show if work types could cause people to get strokes. In a nutshell, a private job seems to be the crucial variable that leads people into stroke. 
+
+```{r}
+# Filter data for urban residence and stroke cases
+work_type_urban <- data %>%
+  filter(stroke == 1 & Residence_type == "Urban") %>%
+  group_by(work_type) %>%
+  summarise(n = n())
+
+# Filter data for rural residence and stroke cases
+work_type_rural <- data %>%
+  filter(stroke == 1 & Residence_type == "Rural") %>%
+  group_by(work_type) %>%
+  summarise(n = n())
+
+# Combine urban and rural data
+combined_data <- bind_rows(
+  mutate(work_type_urban, Residence_type = "Urban"),
+  mutate(work_type_rural, Residence_type = "Rural")
+)
+
+# Plot
+plot3 <- ggplot(combined_data, aes(x = "", y = n, group = work_type, colour = work_type, fill = work_type)) + 
+  geom_bar(width = 1, stat = "identity") + 
+  coord_polar("y", start = 0) +  
+  facet_grid(. ~ Residence_type, switch = "y") + 
+  theme_void() +
+  labs(title = "Work Types affected to Stroke in different area") +
+  theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 20)))
+
+plot3
+
+```
+
+From the data exploration analysis, people who live in urban areas tend to be stroked more than people who live in rural areas. 
+
+```{r}
+stroke_residence <- data %>%
+  select(Residence_type, stroke) %>%
+  filter(stroke == 1)
+
+table(stroke_residence)
+```
+
+## 3. Is smoking affecting to these disease?
+
+## Smoking status vs. Hypertension
+
+I create a new variable named 'smoke_hypertension_counts' to count how many people have hypertension and calculate the percent compared to the overall collected data, which contains both people who have hypertension and those who do not. Then, I classified the hypertension patient group by their smoking status. The insight shows that formerly smoked people have the highest percentage of risking hypertension.
+
+```{r}
+# Calculate counts and percentages for hypertension
+smoke_hypertension_counts <- data %>%
+  group_by(smoking_status) %>%
+  summarise(hypertension_count = sum(hypertension),
+            total_count = n()) %>%
+  mutate(hypertension_percent = hypertension_count / total_count * 100)
+
+# Print the table for hypertension
+print(smoke_hypertension_counts)
+
+```
+
+## Smoking Status vs. Heart Disease
+
+Similar to the question above, I gathered the data, calculated the percentage of people who have heart disease, and then classified them by their smoking status. Again, the formerly smoked people have the highest percentage of risking heart disease.
+
+```{r}
+# Calculate counts and percentages for heart disease
+smoke_heart_disease_counts <- data %>%
+  group_by(smoking_status) %>%
+  summarise(heart_disease_count = sum(heart_disease),
+            total_count = n()) %>%
+  mutate(heart_disease_percent = heart_disease_count / total_count * 100)
+
+# Print the table for heart disease
+print(smoke_heart_disease_counts)
+
+```
+
+## Smoking Status vs. Stroke
+
+Next, I use the same methods as both of the questions above, then focus on stroke. I found that people who have stroke have prior smoking habits.
+
+```{r}
+# Calculate counts and percentages for heart disease
+smoke_stroke_counts <- data %>%
+  group_by(smoking_status) %>%
+  summarise(stroke_count = sum(stroke),
+            total_count = n()) %>%
+  mutate(stroke_percent = stroke_count / total_count * 100)
+
+# Print the table for heart disease
+print(smoke_stroke_counts)
+```
+
+## 4. Which age gap has high chance to get stroke?
+
+## First find the range of ages. The youngest age in this dataset is 8 months old and the oldest age in this dataset is 82 years old. 
+
+To answer this question, we need to know the range of people in the collected data. Therefore, I found that the youngest person in the survey is 8 months old, and the oldest is 82 years old. The technique I apply here is using statistics functions such as min() and max().
+
+```{r}
+max(data$age)
+min(data$age)
+```
+
+Then, I classified the ages into the main five groups, which are under 20, 20–40, 41–60, 61–80, and more than 80. Then create a new column that contains the total age by group, and then summarize them into the exact number. After that, I created a line plot to see what the highest number of people who got strokes were in what age group.
+
+```{r}
+# Define age groups (customize breaks and labels based on your data)
+stroke_age_df <- data %>%
+  select(age, stroke) %>%
+  filter(stroke == 1)
+
+age_groups <- cut(stroke_age_df$age, breaks = c(0, 20, 40, 60, 80, Inf), labels = c("<20", "20-40", "41-60", "61-80", "80+"))
+
+stroke_age_count <- stroke_age_df %>%
+  mutate(age_group = age_groups) %>%
+  group_by(age_group) %>%
+  summarise(stroke_cases = n())
+
+# Create a line plot
+plot4 <- ggplot(stroke_age_count, aes(x = age_group, y = stroke_cases, group = 1)) +
+  geom_line(color= "#6C0345", size = 1) +
+  geom_point(color = "#D20062", size = 3.5) +
+  geom_text(aes(label = stroke_cases), vjust = -0.9, hjust= 0.8, size = 3) +
+  labs(x = "Age Group", y = "Number of Stroke Cases", title = "Number of Stroke Cases by Age Group") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))  # Center the title
+
+# Print the plot
+print(plot4)
+```
+
+## 5. Which average glucose level and BMI ranges have a high chance to get stroke?
+
+## Make a histogram of Average Glucose Level
+
+I created the histogram to show the rough range of the average glucose level of people who had strokes. Surprisingly, the people who are stroked haven't had to get a high average glucose level at all. If we see from the plot, we could roughly conclude that stroke people have a glucose level between 50 and 130.
+
+```{r}
+glucose_level_stroke <- data %>%
+  select(avg_glucose_level, stroke) %>%
+  filter(stroke == 1)
+
+plot5 <- hist(glucose_level_stroke$avg_glucose_level,
+          breaks = 10,
+          main="Histogram of Average of Glucose Level of Stroke Patients",
+          xlab="Glucose level",
+          xlim=c(50,300),
+          ylim=c(0,3000),
+          col = "#FFD23F")
+text(plot5$mids,plot5$counts,labels=plot5$counts, adj=c(0.5, -0.5))
+```
+
+To get more solid details from the plot, we could use the same variable that we created before (which is the group from which we select only the stroke people and their average glucose level), so using the summary() function, we get the two significant data points: mean and medium. I find the mode as well. In this figure, we could observe that the average of people who got strokes have average glucose around 132.54, and 105.22 is the middle number that appeared in the observation. However, the common average glucose, which mostly appeared in the stroke group, is 101.45
+</div>
+```{r}
+summary(glucose_level_stroke$avg_glucose_level)
+names(sort(-table(glucose_level_stroke$avg_glucose_level)))[1]
+```
+
+After taking a look at the average glucose level, I was curious if BMI had also been counted as one of the factors that had a chance to lead to stroke. Thus, I use ggplot2 to create box plots and see the BMI of people who have strokes and people who don't. The healthy people who do not get strokes seem to have a wider distribution of information than the other group, like a wider range of BMI. Breathtakingly, considering only BMI might not be effective enough for predicting if that person has a high chance of stroke.
+
+```{r}
+stroke_data <- data[data$stroke == 1, ]
+no_stroke_data <- data[data$stroke == 0, ]
+
+# Create a box plot
+bmi <- data %>%
+  select(bmi) %>%
+  na.omit()
+
+plot7 <- ggplot(data, aes(x = factor(stroke), y = bmi, fill = factor(stroke))) +
+  geom_boxplot() +
+  labs(x = "Stroke Status", y = "BMI", fill = "Stroke Status") +
+  scale_fill_manual(values = c("#6962AD", "#83C0C1"), labels = c("No", "Yes")) +  # Custom colors for stroke status
+  theme_minimal()
+
+# Print the plot
+print(plot7)
+```
+
+Nonetheless, if we take a look at the statistical data, we could find more specific information from it. I group the data only by BMI, and people who have stroke equal 1 (which means they got stroke), and then calculate the mean, median, and mode. From this insight, we found that stroke people have the same mode and median BMI of around 28.89, and their average BMI is 30.22. I noticed that this range of BMI is classified as having higher values than the healthy BMI referenced on the BMI International website (bmi.com) because a BMI greater than 24.9 is considered unhealthy.
+
+```{r}
+bmi_stroke <- data %>%
+  select(bmi, stroke) %>%
+  filter(stroke == 1)
+
+summary(bmi_stroke$bmi)
+names(sort(-table(bmi_stroke$bmi)))[1]
+```
+
+Later, I hypothesized that there was a relationship between BMI and the average glucose level. Later, I discovered that people with a BMI between approximately 20 and 30 tend to have a glucose level around 50–125, using a hexagonal two-dimensional heatmap plot to explain.
+
+```{r}
+library(hrbrthemes)
+
+plot8 <- ggplot(data, aes(x = bmi, y = avg_glucose_level)) +
+  geom_hex() 
+
+plot8
+```
+
+#### 6. From the dataset, Who has more chance to face stroke? Between people aged between 61-80 who got hypertension and people aged between 61-80 who got heart disease?
+Last observation before we jump right into the conclusion, I doubted which group had a higher number between stroke people who also get hypertension and stroke people who also get heart disease. So I group the data into both target groups and then calculate how many of them there are before using the control flow (if-else condition to summarize which group was found more). Lastly, the stroke people who also have hypertension were more found in this dataset, so we could assume that hypertension might have had a greater influence on stroke disease if we compared it with heart disease.
+
+```{r}
+# Filter the data for individuals aged between 61-80 with hypertension
+hypertension_data <- data %>%
+  select(age, hypertension, stroke) %>%
+  filter(age >= 61 & age <= 80 & hypertension == 1 & stroke == 1)
+
+# Filter the data for individuals aged between 61-80 with heart disease
+heart_disease_data <- data %>%
+  select(age, heart_disease, stroke) %>%
+  filter(age >= 61 & age <= 80 & heart_disease == 1 & stroke == 1)
+
+# Count the number of strokes in each group
+hypertension_stroke_count <- sum(hypertension_data$stroke == 1)
+heart_disease_stroke_count <- sum(heart_disease_data$stroke == 1)
+
+# Compare the counts
+if (hypertension_stroke_count > heart_disease_stroke_count) {
+  cat("People aged between 61-80 with hypertension have a higher chance of facing stroke.\n\n")
+} else if (hypertension_stroke_count < heart_disease_stroke_count) {
+  cat("People aged between 61-80 with heart disease have a higher chance of facing stroke.\n\n")
+} else {
+  cat("Both groups have an equal chance of facing stroke.\n\n")
+}
+
+cat("Total stroke patients who also get hypertension", hypertension_stroke_count, "\n")
+cat("Total stroke patients who also get heart disease", heart_disease_stroke_count)
+```
+
+## Conclusion
+In conclusion, there are many components that could cause a stroke, for example, gender, age, lifestyles, smoking status, and other diseases. According to the data analysis, females have a higher risk of stroke, and people aged 61 to 80 are more likely to have one. I could summarize that hypertension and stress also have a paramount impact on stroke. This realization means that those who have smoked in the past are more likely to get hypertension, heart disease, and stroke. We cannot deny that heart disease is not one of the variables leading to stroke because stroke is found to occur often in patients with heart disease. Except for smoking, there are some other lifestyles that make people have a higher chance of getting strokes. For example, those who work in private industry and reside in metropolitan areas are more likely to suffer a stroke than those who work in other industries and reside in rural areas. We were unable to take into account only one of the two factors—average glucose level and BMI—because both are thought to have been impacted and may have contributed to stroke. People with excessive blood sugar levels and a BMI over the safe range are nearly always at risk for stroke. At this point, I could make the assumption that people who get diabetes have a higher risk of stroke. smoking status, and other diseases. According to the data analysis, females have a higher risk of stroke, and people aged 61 to 80 are more likely to have one. I could summarize that hypertension and stress also have a paramount impact on stroke. From this insight, people who are former smokers have a higher chance of facing hypertension, heart disease, and stroke. According to the number of people who have heart disease, stroke was found in a high amount, so we couldn't deny that heart disease is not one of the factors leading to stroke. Except for smoking, there are some other lifestyles that make people have a higher chance of getting strokes. For instance, people who live in urban areas and have private jobs tend to risk stroke more than people who live in rural areas and work in other types of jobs.Average glucose level and BMI are both considered to have been affected, leading to stroke as well, but we couldn't consider only one of them. Stroke is almost always found in people who have a higher BMI than a healthy index and have a high glucose level. At this point, I could make the assumption that people who get diabetes have a higher risk of stroke. This is only a data analysis of collected data from a specific group, so we could say that stroke could happen to everyone, but if we considered those factors that have a high risk of leading to stroke, Then we could stay healthier and regularly go for a health check.
+
+## Reference
+
+- Stroke Prediction Dataset - <https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset/data>
+- “About Stroke | cdc.gov.” Centers for Disease Control and Prevention, 4 May 2023, <www.cdc.gov/stroke/about.htm>.
+- Department of Health & Human Services. “Effects of Stroke.” Better Health Channel, <www.betterhealth.vic.gov.au/health/conditionsandtreatments/effects-of-stroke>.
+- World Health Organization: WHO. “World Stroke Day 2022.” World Health Organization, 29 Oct. 2022, <www.who.int/srilanka/news/detail/29-10-2022-world-stroke-day-2022>.
+- “International | BMI.com.” BMI.com, www.bmi.com/international.
